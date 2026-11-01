@@ -1,0 +1,1569 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Monod Movie — S, X &amp; P explained with sliders</title>
+<meta name="description" content="An interactive cartoon that explains and numerically solves the Monod system of differential equations for substrate, biomass and product, with live sliders for S0, X0, final time, muMax, Ks and animation speed.">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --amber: #f59e0b; --amber-soft: #fbbf24; --stone-900: #1c1917; --stone-800: #292524;
+    --ink: #292524; --muted: #78716c; --line: #e7e5e4;
+  }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: #faf6ee; color: var(--ink); min-height: 100vh; display: flex; flex-direction: column;
+    line-height: 1.5;
+  }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  b { font-weight: 700; }
+
+  /* ---------- header ---------- */
+  .site-header { background: linear-gradient(90deg, #fff7e6, #fdefd2, #fff7e6); border-bottom: 1px solid #fde68a; }
+  .header-inner { max-width: 80rem; margin: 0 auto; padding: 20px 16px; }
+  .title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+  .showing-badge {
+    display: inline-flex; align-items: center; gap: 8px; background: var(--stone-900); color: #fcd34d;
+    padding: 6px 12px; border-radius: 10px; font-family: ui-monospace, monospace; font-size: 12px;
+    letter-spacing: .18em; font-weight: 700;
+  }
+  h1 { font-size: clamp(22px, 3.2vw, 30px); font-weight: 800; letter-spacing: -.02em; color: var(--stone-900); }
+  .subtitle { margin-top: 8px; max-width: 46rem; font-size: 15px; color: #57534e; }
+  .tS { color: #d97706; } .tX { color: #4d7c0f; } .tP { color: #9333ea; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .chip { border: 1px solid #d6d3d1; background: #fff; border-radius: 9999px; padding: 4px 11px; font-size: 12px; color: #57534e; }
+
+  /* ---------- layout ---------- */
+  main { max-width: 80rem; width: 100%; margin: 0 auto; padding: 20px 16px; flex: 1; }
+  .grid-main { display: grid; gap: 16px; grid-template-columns: 1fr; }
+  @media (min-width: 1024px) { .grid-main { grid-template-columns: 3fr 2fr; align-items: start; } }
+  .right-col { display: flex; flex-direction: column; gap: 16px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 1px 4px rgba(41, 37, 36, .08); }
+  .card-dark { background: #0c0a09; border-color: var(--stone-900); box-shadow: 0 10px 24px rgba(0,0,0,.25); }
+  .pad { padding: 14px; }
+  @media (min-width: 640px) { .pad { padding: 16px; } }
+
+  canvas { display: block; width: 100%; }
+  .theater-canvas { aspect-ratio: 16 / 10; border-radius: 8px; background: #1c1917; }
+  .charts-canvas { height: 430px; touch-action: none; cursor: pointer; }
+  .tiny-note { margin-top: 6px; font-size: 11px; color: var(--muted); line-height: 1.45; }
+
+  /* ---------- narrator + transport ---------- */
+  .narrator { margin-top: 12px; border: 1px solid rgba(251, 191, 36, .6); background: var(--stone-900); border-radius: 10px; padding: 12px; }
+  .narrator-head { display: flex; align-items: center; gap: 10px; }
+  .narrator-tag { font-size: 11px; letter-spacing: .18em; color: rgba(252, 211, 77, .8); text-transform: uppercase; }
+  .narrator p { margin-top: 6px; color: #e7e5e4; font-size: 14px; line-height: 1.6; }
+  .phase-badge { font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 9999px; border: 1px solid transparent; white-space: nowrap; }
+  .pb-feast { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
+  .pb-slowdown { background: #ffedd5; color: #9a3412; border-color: #fdba74; }
+  .pb-famine { background: #ffe4e6; color: #9f1239; border-color: #fda4af; }
+  .pb-stationary { background: #f3e8ff; color: #6b21a8; border-color: #d8b4fe; }
+
+  .transport { margin-top: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px; font: inherit; font-weight: 700; font-size: 14px;
+    border-radius: 10px; padding: 9px 16px; cursor: pointer; border: 1px solid transparent;
+    transition: filter .15s ease, background .15s ease; min-height: 42px;
+  }
+  .btn:hover { filter: brightness(1.06); }
+  .btn:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+  .btn-primary { background: var(--amber); color: #1c1917; }
+  .btn-primary:hover { background: #fbbf24; }
+  .btn-dark { background: #292524; color: #f5f5f4; }
+  .btn-dark:hover { background: #44403c; }
+  .btn-outline { background: #fff; color: var(--ink); border-color: #d6d3d1; font-weight: 600; }
+  .speed-box { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 200px; }
+  .speed-label { font-size: 12px; font-weight: 600; color: #d6d3d1; white-space: nowrap; }
+  .speed-val { font-family: ui-monospace, monospace; font-size: 12px; color: #fcd34d; min-width: 46px; text-align: right; }
+
+  /* ---------- cards content ---------- */
+  .card-h { font-size: 14px; font-weight: 700; color: var(--stone-900); }
+  .sep { border: 0; border-top: 1px solid var(--line); margin: 12px 0; }
+  .readout-grid { margin-top: 8px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .ro-chip { border: 2px solid #d6d3d1; border-radius: 10px; background: #fafaf9; padding: 6px 8px; }
+  .ro-chip .k { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .ro-chip .v { font-family: ui-monospace, monospace; font-weight: 700; font-size: 14px; color: var(--stone-900); white-space: nowrap; }
+  .c-S { border-color: #fbbf24; } .c-S .v { color: #92400e; }
+  .c-X { border-color: #84cc16; } .c-X .v { color: #3f6212; }
+  .c-P { border-color: #c084fc; } .c-P .v { color: #6b21a8; }
+  .c-mu { border-color: #fb923c; } .c-mu .v { color: #9a3412; }
+  .results-list { margin-top: 8px; list-style: none; display: flex; flex-direction: column; gap: 5px; font-size: 13px; color: #44403c; }
+
+  /* ---------- director console ---------- */
+  .console { margin-top: 16px; }
+  .console-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+  .console-title { font-size: 16px; font-weight: 700; color: var(--stone-900); }
+  .console-grid { display: grid; gap: 20px 36px; margin-top: 6px; grid-template-columns: 1fr; }
+  @media (min-width: 768px) { .console-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 1280px) { .console-grid { grid-template-columns: repeat(3, 1fr); } }
+  .slider-row { margin-top: 12px; }
+  .slider-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .slider-head label { font-size: 13.5px; font-weight: 600; color: #44403c; }
+  .slider-head .sym { font-family: ui-monospace, monospace; color: #b45309; font-weight: 700; }
+  .slider-head .unit { font-size: 12px; font-weight: 400; color: var(--muted); }
+  .val-badge {
+    font-family: ui-monospace, monospace; font-size: 12.5px; font-weight: 700; color: var(--stone-900);
+    border: 1px solid #fbbf24; border-radius: 8px; padding: 1px 8px; background: #fffbeb;
+  }
+  input[type="range"] { width: 100%; margin-top: 9px; accent-color: var(--amber); height: 22px; cursor: pointer; }
+  .hint { margin-top: 4px; font-size: 11px; color: var(--muted); line-height: 1.4; }
+  .console-note { margin-top: 16px; font-size: 12px; color: var(--muted); }
+
+  /* ---------- explanations ---------- */
+  .exp { border-top: 1px solid var(--line); }
+  .exp:first-of-type { border-top: 0; }
+  .exp summary {
+    cursor: pointer; list-style: none; padding: 14px 2px; font-size: 15.5px; font-weight: 700;
+    color: var(--stone-900); display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .exp summary::-webkit-details-marker { display: none; }
+  .exp summary::after { content: "▾"; color: var(--muted); font-size: 13px; transition: transform .15s ease; }
+  .exp[open] summary::after { transform: rotate(180deg); }
+  .exp-body { padding: 2px 2px 18px; font-size: 14px; color: #44403c; line-height: 1.65; }
+  .exp-body p + p { margin-top: 10px; }
+  .eq-box {
+    border: 1px solid #fde68a; background: #fffbeb; border-radius: 12px; padding: 12px 16px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13.5px; color: var(--stone-900);
+    overflow-x: auto; margin: 10px 0;
+  }
+  .eq-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; padding: 4px 0; }
+  .eq-note { font-size: 11.5px; color: var(--muted); font-family: ui-sans-serif, system-ui, sans-serif; margin-left: 10px; }
+  .eqS { color: #d97706; } .eqX { color: #4d7c0f; } .eqP { color: #9333ea; }
+  .eq-sep { border: 0; border-top: 1px solid #fde68a; margin: 8px 0; }
+  .frac { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; margin: 0 5px; font-size: .84em; line-height: 1.2; text-align: center; }
+  .frac .top { padding: 0 5px; border-bottom: 1px solid #57534e; }
+  .frac .bot { padding: 0 5px; }
+  .scene-table { margin-top: 8px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .scene-row { display: grid; grid-template-columns: 1fr; gap: 3px 14px; padding: 10px 14px; font-size: 13.5px; }
+  @media (min-width: 640px) { .scene-row { grid-template-columns: 150px 175px 1fr; } }
+  .scene-row:nth-child(even) { background: #fafaf9; }
+  .scene-row .cond { font-family: ui-monospace, monospace; font-size: 12px; color: #b45309; padding-top: 2px; }
+  .scene-row .what { color: #57534e; }
+
+  /* ---------- footer ---------- */
+  .site-footer {
+    margin-top: auto; border-top: 1px solid #fde68a; background: #fff7e6; text-align: center;
+    padding: 12px 16px; font-size: 12px; color: var(--muted);
+  }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <div class="title-row">
+      <span class="showing-badge">🎞 NOW SHOWING</span>
+      <h1>The Monod Movie 🎬 — S, X &amp; P</h1>
+    </div>
+    <p class="subtitle">
+      A cartoon batch-reactor blockbuster in four scenes, starring
+      <b class="tS">Substrate S</b>, <b class="tX">Biomass X</b> and <b class="tP">Product P</b>.
+      You are the director: every slider bends the physics live.
+    </p>
+    <div class="chips">
+      <span class="chip">▶ press play to roll the film</span>
+      <span class="chip">🎚 sliders rewrite the ODEs in real time</span>
+      <span class="chip">↔ drag the charts to scrub time</span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="grid-main">
+
+    <!-- theater -->
+    <section class="card card-dark" aria-label="Cartoon theater">
+      <div class="pad">
+        <canvas id="theater" class="theater-canvas" role="img"
+          aria-label="Cartoon animation of a batch reactor: microbes eating sugar, dividing and producing product"></canvas>
+        <div class="narrator">
+          <div class="narrator-head">
+            <span id="phase-badge" class="phase-badge pb-feast">Scene 1 · Feast</span>
+            <span class="narrator-tag">narrator</span>
+          </div>
+          <p id="caption"></p>
+        </div>
+        <div class="transport">
+          <button id="btn-play" class="btn btn-primary" aria-label="Pause">⏸ Pause</button>
+          <button id="btn-restart" class="btn btn-dark" aria-label="Restart the movie">↺ Restart</button>
+          <div class="speed-box">
+            <span class="speed-label">speed</span>
+            <input type="range" id="sl-speed" min="0.25" max="5" step="0.25" value="1" aria-label="Animation speed slider">
+            <span class="speed-val" id="val-speed">1.00×</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- charts + readouts -->
+    <div class="right-col">
+      <section class="card" aria-label="Solution charts">
+        <div class="pad">
+          <canvas id="charts" class="charts-canvas" role="img"
+            aria-label="Charts of S, X and P versus time plus the Monod curve of mu versus S"></canvas>
+          <p class="tiny-note">
+            Axes are locked from the origin (0, 0) to (t_f, y_max), so the complete graph is always
+            in frame — no zoom jumps, ever.
+          </p>
+        </div>
+      </section>
+
+      <section class="card" aria-label="Live readouts and results">
+        <div class="pad">
+          <h2 class="card-h">🎥 Live readout (at the cursor)</h2>
+          <div class="readout-grid">
+            <div class="ro-chip"><div class="k">time t</div><div class="v" id="ro-t">0.0 h</div></div>
+            <div class="ro-chip c-S"><div class="k">S substrate</div><div class="v" id="ro-S">–</div></div>
+            <div class="ro-chip c-X"><div class="k">X biomass</div><div class="v" id="ro-X">–</div></div>
+            <div class="ro-chip c-P"><div class="k">P product</div><div class="v" id="ro-P">–</div></div>
+            <div class="ro-chip c-mu"><div class="k">μ rate</div><div class="v" id="ro-mu">–</div></div>
+            <div class="ro-chip c-mu"><div class="k">μ / μmax</div><div class="v" id="ro-mufrac">–</div></div>
+          </div>
+          <hr class="sep">
+          <h2 class="card-h">🧾 End credits (results)</h2>
+          <ul id="results" class="results-list"></ul>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- director console -->
+  <section class="card console" aria-label="Simulation controls">
+    <div class="pad">
+      <div class="console-head">
+        <h2 class="console-title">🎚 Director console</h2>
+        <button id="btn-reset" class="btn btn-outline">⟲ Reset defaults</button>
+      </div>
+      <div class="console-grid" id="sliders-batch"></div>
+      <hr class="sep">
+      <div class="console-grid" id="sliders-kinetics"></div>
+      <p class="console-note">
+        Y_PX is no longer a slider: closing the mass balance (all sugar → bugs + product) forces
+        Y_PX = (1 − Y_XS)/Y_XS and keeps S + X + P constant. Six steering wheels remain — the five
+        you asked for plus the biomass yield Y_XS.
+      </p>
+    </div>
+  </section>
+
+  <!-- explanations -->
+  <section class="card" aria-label="Explanations" style="margin-top:16px">
+    <div class="pad">
+
+      <details class="exp" open>
+        <summary>📜 The script — the ODE system and Monod's law</summary>
+        <div class="exp-body">
+          <div class="eq-box">
+            <div class="eq-row">
+              <b class="eqS">dS/dt</b><span>= −</span><span class="frac"><span class="top">1</span><span class="bot">Y<sub>XS</sub></span></span><span>· μ(S) ·</span><b class="eqX">X</b>
+              <span class="eq-note">(sugar eaten while bugs grow)</span>
+            </div>
+            <div class="eq-row">
+              <b class="eqX">dX/dt</b><span>= μ(S) ·</span><b class="eqX">X</b>
+              <span class="eq-note">(growth = rate × crowd)</span>
+            </div>
+            <div class="eq-row">
+              <b class="eqP">dP/dt</b><span>=</span><span class="frac"><span class="top">1 − Y<sub>XS</sub></span><span class="bot">Y<sub>XS</sub></span></span><span>· μ(S) ·</span><b class="eqX">X</b>
+              <span class="eq-note">(the sugar fraction not built into bugs becomes product)</span>
+            </div>
+            <hr class="eq-sep">
+            <div class="eq-row">
+              <b>μ(S)</b><span>= μ<sub>max</sub> ·</span><span class="frac"><span class="top">S</span><span class="bot">K<sub>s</sub> + S</span></span>
+              <span class="eq-note">Monod (1942): food-limited speed of growth</span>
+            </div>
+          </div>
+          <p>
+            Monod's law is the speed limit of the whole story. When S ≫ Ks the fraction S/(Ks+S) ≈ 1,
+            so μ ≈ μmax: full throttle. When S = Ks the cells run at exactly half speed. When S ≪ Ks,
+            μ shrinks almost in proportion to S — famine mode. It is a hyperbola, like
+            Michaelis–Menten, and it is the nonlinear heartbeat inside these three ODEs.
+          </p>
+          <p>
+            A hidden invariant glues the cast together: dividing the X-equation by the S-equation
+            gives dX/dS = −Y_XS, so <span class="mono">S = S₀ − (X − X₀)/Y_XS</span>. Sugar does not
+            vanish — it becomes bugs (and a bit of product). That is why the final X is exactly
+            X₀ + Y_XS·S₀.
+          </p>
+          <p>
+            And because <b>all</b> substrate must end up as biomass or product, the balance closes
+            without a free product-yield parameter: <span class="mono">dS/dt = −(dX/dt + dP/dt)</span>,
+            i.e. total mass <span class="mono">S + X + P = S₀ + X₀</span> is conserved exactly. Product
+            is simply the leftover sugar mass: <span class="mono">dP/dt = (1/Y_XS − 1)·μ(S)·X</span>, so
+            <span class="mono">Y_PX = (1 − Y_XS)/Y_XS</span> is derived, not a slider, and
+            <span class="mono">P_f = (1 − Y_XS)·S₀</span>. (Watch out for the flipped ratio
+            Y_XS/(1 − Y_XS): it only conserves mass at Y_XS = 0.5.)
+          </p>
+        </div>
+      </details>
+
+      <details class="exp">
+        <summary>🎭 Meet the cast — who are S, X and P?</summary>
+        <div class="exp-body">
+          <p><b class="tS">S — Substrate</b> is the food: a sugar like glucose, measured in g/L. It
+          only decreases — microbes eat it, and eating is the engine of everything else.</p>
+          <p><b class="tX">X — Biomass</b> is the living crowd: the concentration of cells (g/L).
+          Cells eat sugar and split, so X grows — at a speed set by the menu size through Monod's law.</p>
+          <p><b class="tP">P — Product</b> is what we harvest: e.g. ethanol, lactic acid,
+          antibiotics (g/L). Here P is growth-associated and the balance is closed: of every gram
+          of sugar eaten, Y_XS g becomes bugs and the remaining (1 − Y_XS) g becomes product — so
+          Y_PX = (1 − Y_XS)/Y_XS is derived, not a free slider.</p>
+        </div>
+      </details>
+
+      <details class="exp">
+        <summary>🧮 Behind the camera — how the system is solved</summary>
+        <div class="exp-body">
+          <p><b>Numerical star:</b> a classical 4th-order Runge–Kutta (RK4) scheme with 2400 fixed
+          steps integrates (S, X, P) from t = 0 to t_f. RK4 samples each slope four times per step
+          (k₁…k₄) and blends them, giving tiny error even with Monod's nonlinearity — smooth enough
+          to look effortless on screen.</p>
+          <p><b>There is also a closed form.</b> Using the yield invariant
+          S = S₀ − (X − X₀)/Y_XS inside the X-equation separates the variables (A = S₀ + X₀/Y_XS):</p>
+          <div class="eq-box">
+            <div class="eq-row">
+              <span>t(X) =</span><span class="frac"><span class="top">1</span><span class="bot">μ<sub>max</sub></span></span><span>[</span>
+              <span>(1 + K<sub>s</sub>/A) · ln(X/X₀)</span><span>+</span>
+              <span>(K<sub>s</sub>/A) · ln(S₀/S)</span><span>]</span>
+            </div>
+            <div class="eq-row"><span class="eq-note" style="margin-left:0">valid while S &gt; 0 — this implicit formula is what the ✅ check in the results card verifies against the RK4 movie</span></div>
+          </div>
+          <p>Push Ks → 0 and it collapses to the textbook exponential law
+          <span class="mono">X = X₀·e^(μmax·t)</span>; push S low and growth stalls — the formula
+          reproduces every scene of the cartoon.</p>
+        </div>
+      </details>
+
+      <details class="exp" open>
+        <summary>🎞️ Scene guide — the four acts of a batch culture</summary>
+        <div class="exp-body" style="padding-bottom:6px">
+          <div class="scene-table">
+            <div class="scene-row"><b>1 · The Feast</b><span class="cond">S ≫ Ks → μ ≈ μmax</span><span class="what">Exponential growth: X doubles and doubles; S is devoured; P starts bubbling.</span></div>
+            <div class="scene-row"><b>2 · The Slowdown</b><span class="cond">S ≈ Ks → μ = μmax/2</span><span class="what">Monod bends the curve: growth decelerates as sugar gets scarce.</span></div>
+            <div class="scene-row"><b>3 · The Famine</b><span class="cond">S ≪ Ks → μ ≈ 0</span><span class="what">Division all but stops; sleepy cells; S crawls toward zero.</span></div>
+            <div class="scene-row"><b>4 · The Finale</b><span class="cond">S ≈ 0 → μ = 0</span><span class="what">Stationary phase: X frozen at X₀ + Y_XS·S₀, P at (1 − Y_XS)·S₀ — the leftover sugar mass.</span></div>
+          </div>
+        </div>
+      </details>
+
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  Batch Monod kinetics · closed mass balance (S + X + P = const) · RK4 × 2400 steps · single-file
+  HTML — no two screenings are alike.
+</footer>
+<script>
+/* ================= Monod math core (RK4 solver + implicit solution) =================
+   Closed mass balance: ALL substrate becomes biomass or product, so
+     dS/dt = -(dX/dt + dP/dt)   <=>   S + X + P = const (= S0 + X0)
+   With dX/dt = mu*X and dS/dt = -(1/Yxs)*mu*X this forces
+     dP/dt = (1/Yxs - 1) * mu * X,  i.e.  Y_PX = (1 - Yxs)/Yxs (derived, not free).
+   ================================================================================ */
+"use strict";
+
+const DEFAULT_PARAMS = { S0: 10, X0: 0.1, muMax: 0.45, Ks: 1.0, Yxs: 0.5, tf: 24 };
+
+function monodMu(S, muMax, Ks) {
+  const s = Math.max(S, 0);
+  return (muMax * s) / (Ks + s);
+}
+
+/** Product yield on biomass, derived from the closed mass balance: Y_PX = (1 - Yxs)/Yxs. */
+function ypxOf(p) {
+  return (1 - p.Yxs) / Math.max(p.Yxs, 1e-6);
+}
+
+/** Implicit analytic solution: time t at which biomass equals X (valid while S > 0). */
+function implicitTimeForX(X, p) {
+  const S = p.S0 - (X - p.X0) / p.Yxs;
+  if (S <= 0 || X <= p.X0 || p.muMax <= 0) return Infinity;
+  const A = p.S0 + p.X0 / p.Yxs;
+  return (1 / p.muMax) * ((1 + p.Ks / A) * Math.log(X / p.X0) + (p.Ks / A) * Math.log(p.S0 / S));
+}
+
+function niceCeil(v) {
+  if (v <= 0) return 1;
+  const exp = Math.floor(Math.log10(v));
+  const base = Math.pow(10, exp);
+  const m = v / base;
+  const nice = m <= 1 ? 1 : m <= 1.5 ? 1.5 : m <= 2 ? 2 : m <= 3 ? 3 : m <= 4 ? 4 : m <= 5 ? 5 : m <= 8 ? 8 : 10;
+  return nice * base;
+}
+
+function niceStep(raw) {
+  if (raw <= 0) return 1;
+  const exp = Math.floor(Math.log10(raw));
+  const base = Math.pow(10, exp);
+  const m = raw / base;
+  const step = m <= 1 ? 1 : m <= 2 ? 2 : m <= 2.5 ? 2.5 : m <= 5 ? 5 : 10;
+  return step * base;
+}
+
+/** Solve the batch Monod system with RK4 and build chart-ready summary data. */
+function solveMonod(p, n = 2400) {
+  const dt = p.tf / n;
+  const t = new Float64Array(n + 1);
+  const S = new Float64Array(n + 1);
+  const X = new Float64Array(n + 1);
+  const P = new Float64Array(n + 1);
+  const MU = new Float64Array(n + 1);
+
+  S[0] = p.S0; X[0] = p.X0; P[0] = 0; MU[0] = monodMu(p.S0, p.muMax, p.Ks);
+
+  const deriv = (s, x) => {
+    const mu = monodMu(s, p.muMax, p.Ks);
+    return [-(mu * x) / p.Yxs, mu * x, ypxOf(p) * mu * x];
+  };
+
+  for (let i = 0; i < n; i++) {
+    const s = S[i], x = X[i], pr = P[i];
+    const [dS1, dX1, dP1] = deriv(s, x);
+    const [dS2, dX2, dP2] = deriv(s + (dt / 2) * dS1, x + (dt / 2) * dX1);
+    const [dS3, dX3, dP3] = deriv(s + (dt / 2) * dS2, x + (dt / 2) * dX2);
+    const [dS4, dX4, dP4] = deriv(s + dt * dS3, x + dt * dX3);
+    const sN = s + (dt / 6) * (dS1 + 2 * dS2 + 2 * dS3 + dS4);
+    const xN = x + (dt / 6) * (dX1 + 2 * dX2 + 2 * dX3 + dX4);
+    const pN = pr + (dt / 6) * (dP1 + 2 * dP2 + 2 * dP3 + dP4);
+    S[i + 1] = Math.max(sN, 0);
+    X[i + 1] = Math.max(xN, 0);
+    P[i + 1] = Math.max(pN, 0);
+    t[i + 1] = (i + 1) * dt;
+    MU[i + 1] = monodMu(S[i + 1], p.muMax, p.Ks);
+  }
+
+  // Fixed chart scaling: origin always visible, full curves always in frame.
+  let peak = 0;
+  for (let i = 0; i <= n; i++) peak = Math.max(peak, S[i], X[i], P[i]);
+  const yMax = niceCeil(peak * 1.08);
+  const Smax = Math.max(p.S0 * 1.05, p.Ks * 3);
+
+  // Time when sugar essentially runs out (S < 2% of S0).
+  let tSugarOut = null;
+  const sThreshold = Math.max(p.S0 * 0.02, 1e-9);
+  for (let i = 0; i <= n; i++) {
+    if (S[i] < sThreshold) { tSugarOut = t[i]; break; }
+  }
+
+  // Closed mass balance check: S + X + P should stay constant (drift ~ machine epsilon).
+  const mass0 = p.S0 + p.X0;
+  let maxMassDrift = 0;
+  for (let i = 0; i <= n; i++) {
+    const d = Math.abs(S[i] + X[i] + P[i] - mass0) / mass0;
+    if (d > maxMassDrift) maxMassDrift = d;
+  }
+
+  // Verify RK4 against the implicit closed-form solution.
+  let maxRelErr = null;
+  const stride = Math.max(1, Math.floor(n / 60));
+  for (let i = 0; i <= n; i += stride) {
+    if (X[i] <= p.X0 * (1 + 1e-9)) continue;
+    if (S[i] <= p.S0 * 1e-4) continue;
+    const tAna = implicitTimeForX(X[i], p);
+    if (!isFinite(tAna)) continue;
+    const rel = Math.abs(tAna - t[i]) / Math.max(t[i], 1e-9);
+    if (maxRelErr === null || rel > maxRelErr) maxRelErr = rel;
+  }
+
+  return {
+    traj: { n: n + 1, t, S, X, P, mu: MU },
+    yMax, Smax,
+    mu0: MU[0],
+    Xfinal: X[n], Pfinal: P[n],
+    YpxEff: ypxOf(p), maxMassDrift,
+    tSugarOut, maxRelErrImplicit: maxRelErr,
+  };
+}
+
+/** Linear interpolation of the trajectory at time t (clamped to [0, tf]). */
+function sampleAt(summary, t) {
+  const tr = summary.traj;
+  const tEnd = tr.t[tr.n - 1];
+  const tc = Math.min(Math.max(t, 0), tEnd);
+  const idx = Math.min(Math.max(Math.floor((tc / tEnd) * (tr.n - 1)), 0), tr.n - 2);
+  const frac = (tc - tr.t[idx]) / (tr.t[idx + 1] - tr.t[idx]);
+  const lerp = (a) => a[idx] + (a[idx + 1] - a[idx]) * frac;
+  return { S: lerp(tr.S), X: lerp(tr.X), P: lerp(tr.P), mu: lerp(tr.mu) };
+}
+
+function phaseAt(S, S0, mu, muMax) {
+  if (S <= Math.max(S0 * 0.02, 1e-9) || (muMax > 0 && mu / muMax < 0.02)) return "stationary";
+  const muFrac = muMax > 0 ? mu / muMax : 0;
+  if (muFrac > 0.75) return "feast";
+  if (muFrac > 0.3) return "slowdown";
+  return "famine";
+}
+
+const PHASE_SCENE = {
+  feast: { n: 1, name: "THE FEAST" },
+  slowdown: { n: 2, name: "THE SLOWDOWN" },
+  famine: { n: 3, name: "THE FAMINE" },
+  stationary: { n: 4, name: "THE FINALE" },
+};
+</script>
+<script>
+/* ================= TheaterEngine — the cartoon movie screen ================= */
+"use strict";
+
+const MAX_MICROBES = 26, MAX_SUGARS = 48, MAX_BUBBLES = 26;
+const DIVIDE_MS = 650, EAT_MS = 240;
+
+function clampT(v, a, b) { return Math.min(Math.max(v, a), b); }
+function lerpT(a, b, t) { return a + (b - a) * t; }
+
+class TheaterEngine {
+  constructor(canvas, getShared) {
+    this.canvas = canvas;
+    this.getShared = getShared;
+    this.ctx = canvas.getContext("2d");
+    this.raf = 0;
+    this.destroyed = false;
+    this.sugars = []; this.microbes = []; this.bubbles = []; this.crumbs = []; this.puffs = [];
+    this.foam = 0;
+    this.lastSeenReset = -1; this.lastDivision = 0; this.lastPoof = 0; this.lastBubble = 0;
+    this.W = 0; this.H = 0;
+    this.loop = this.loop.bind(this);
+    this.raf = requestAnimationFrame(this.loop);
+  }
+
+  destroy() { this.destroyed = true; cancelAnimationFrame(this.raf); }
+
+  reset() {
+    this.sugars = []; this.microbes = []; this.bubbles = []; this.crumbs = []; this.puffs = [];
+    this.foam = 0; this.lastDivision = 0;
+  }
+
+  loop(now) {
+    if (this.destroyed) return;
+    this.frame(now);
+    this.raf = requestAnimationFrame(this.loop);
+  }
+
+  frame(now) {
+    const sh = this.getShared();
+    if (sh.resetToken !== this.lastSeenReset) { this.lastSeenReset = sh.resetToken; this.reset(); }
+    this.resize();
+    this.update(now, sh);
+    this.draw(now, sh);
+  }
+
+  resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = this.canvas.clientWidth, h = this.canvas.clientHeight;
+    if (w === 0 || h === 0) return;
+    if (this.canvas.width !== Math.round(w * dpr) || this.canvas.height !== Math.round(h * dpr)) {
+      this.canvas.width = Math.round(w * dpr);
+      this.canvas.height = Math.round(h * dpr);
+    }
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.W = w; this.H = h;
+  }
+
+  vessel() {
+    const W = this.W, H = this.H, sprocket = 20;
+    const x0 = W * 0.09, x1 = W * 0.91, y0 = 42, y1 = H - sprocket - 14;
+    const surface = y0 + (y1 - y0) * 0.16;
+    return { x0, x1, y0, y1, surface, sprocket };
+  }
+
+  update(now, sh) {
+    const p = sh.params, summary = sh.summary;
+    const st = sampleAt(summary, sh.tCur);
+
+    const Xf = Math.max(p.X0 + p.Yxs * p.S0, p.X0 * 1.0001);
+    const lnFrac = clampT(Math.log(Math.max(st.X, p.X0) / p.X0) / Math.log(Xf / p.X0), 0, 1);
+    const targetMicrobes = Math.round(2 + (MAX_MICROBES - 2) * lnFrac);
+    const targetSugars = Math.round(3 + (MAX_SUGARS - 3) * clampT(st.S / p.S0, 0, 1));
+
+    const V = this.vessel();
+    const pad = 16;
+    const bx0 = V.x0 + pad, bx1 = V.x1 - pad, by0 = V.surface + pad, by1 = V.y1 - pad;
+
+    const muFrac = p.muMax > 0 ? st.mu / p.muMax : 0;
+    const sleepy = muFrac < 0.15;
+    const bubbleRateNorm = clampT(
+      (st.mu * st.X) / Math.max(p.muMax * summary.Xfinal, 1e-9), 0, 1
+    );
+
+    // ---- microbes population
+    if (this.microbes.length < targetMicrobes) {
+      while (this.microbes.length < Math.min(targetMicrobes, 2) && this.microbes.length < MAX_MICROBES) {
+        this.microbes.push(this.spawnMicrobe(bx0, bx1, by0, by1));
+      }
+      const anyDividing = this.microbes.some((m) => m.divideT >= 0);
+      if (!anyDividing && now - this.lastDivision > 420) {
+        const parent = this.microbes[Math.floor(Math.random() * this.microbes.length)];
+        if (parent) { parent.divideT = now; this.lastDivision = now; }
+      }
+    } else if (this.microbes.length > targetMicrobes && now - this.lastPoof > 520) {
+      const i = Math.floor(Math.random() * this.microbes.length);
+      const m = this.microbes[i];
+      this.puffs.push({ x: m.x, y: m.y, r: m.r * 1.2, life: 1 });
+      this.microbes.splice(i, 1);
+      this.lastPoof = now;
+    }
+
+    // resolve finished mitoses
+    for (let i = this.microbes.length - 1; i >= 0; i--) {
+      const m = this.microbes[i];
+      if (m.divideT >= 0 && now - m.divideT >= DIVIDE_MS && this.microbes.length < MAX_MICROBES) {
+        this.microbes.splice(i, 1);
+        for (let k = 0; k < 2; k++) {
+          const child = this.spawnMicrobe(bx0, bx1, by0, by1);
+          child.x = m.x + (k === 0 ? -m.r * 0.8 : m.r * 0.8);
+          child.y = m.y;
+          child.r = m.r * 0.85;
+          child.vx = (k === 0 ? -45 : 45) + m.vx * 0.4;
+          child.vy = m.vy * 0.4;
+          this.microbes.push(child);
+        }
+      }
+    }
+
+    // ---- sugars population
+    while (this.sugars.length < targetSugars) this.sugars.push(this.spawnSugar(bx0, bx1, by0, by1, now));
+    if (this.sugars.length > targetSugars) {
+      const free = this.sugars.filter((s) => s.state === "free");
+      if (free.length > 0 && this.microbes.length > 0) {
+        let bestS = null, bestM = 0, bestD = Infinity;
+        for (const s of free) {
+          for (let j = 0; j < this.microbes.length; j++) {
+            const m = this.microbes[j];
+            const d = (s.x - m.x) ** 2 + (s.y - m.y) ** 2;
+            if (d < bestD) { bestD = d; bestS = s; bestM = j; }
+          }
+        }
+        if (bestS) { bestS.state = "held"; bestS.holder = bestM; }
+      }
+    }
+
+    // ---- steering + eating
+    for (let i = 0; i < this.microbes.length; i++) {
+      const m = this.microbes[i];
+      m.sleepy = sleepy;
+      let tx = null, ty = null;
+      const held = this.sugars.find((s) => s.state === "held" && s.holder === i);
+      if (held) {
+        tx = held.x; ty = held.y;
+        const d = Math.hypot(held.x - m.x, held.y - m.y);
+        if (d < m.r * 1.1) {
+          held.state = "eaten"; held.eatT = now; m.gulpT = now;
+          for (let c = 0; c < 5; c++) {
+            this.crumbs.push({
+              x: held.x, y: held.y,
+              vx: (Math.random() - 0.5) * 90, vy: (Math.random() - 0.5) * 90 - 20, life: 1,
+            });
+          }
+        }
+      } else {
+        m.wanderT -= 1 / 60;
+        if (m.wanderT <= 0) {
+          m.wanderT = 0.8 + Math.random() * 1.4;
+          m.wanderA = Math.random() * Math.PI * 2;
+        }
+        tx = m.x + Math.cos(m.wanderA) * 60;
+        ty = m.y + Math.sin(m.wanderA) * 60;
+      }
+      const baseSpeed = sleepy ? 12 : 34;
+      if (tx !== null && ty !== null) {
+        const dx = tx - m.x, dy = ty - m.y;
+        const d = Math.hypot(dx, dy) || 1;
+        const sp = held ? baseSpeed * 1.7 : baseSpeed;
+        m.vx = lerpT(m.vx, (dx / d) * sp, 0.08);
+        m.vy = lerpT(m.vy, (dy / d) * sp, 0.08);
+      }
+      m.x += m.vx / 60; m.y += m.vy / 60;
+      if (m.x < bx0) { m.x = bx0; m.vx = Math.abs(m.vx); }
+      if (m.x > bx1) { m.x = bx1; m.vx = -Math.abs(m.vx); }
+      if (m.y < by0) { m.y = by0; m.vy = Math.abs(m.vy); }
+      if (m.y > by1) { m.y = by1; m.vy = -Math.abs(m.vy); }
+      if (Math.hypot(m.vx, m.vy) > 4) m.heading = Math.atan2(m.vy, m.vx);
+    }
+
+    this.sugars = this.sugars.filter((s) => !(s.state === "eaten" && now - s.eatT > EAT_MS));
+    for (const s of this.sugars) {
+      if (s.state !== "free") continue;
+      s.x += s.vx / 60; s.y += s.vy / 60; s.rot += s.vr / 60;
+      if (s.x < bx0 || s.x > bx1) s.vx *= -1;
+      if (s.y < by0 || s.y > by1) s.vy *= -1;
+    }
+
+    // ---- product bubbles
+    const spawnEvery = lerpT(1500, 140, bubbleRateNorm);
+    if (
+      summary.Pfinal > 0 && st.P < summary.Pfinal * 0.999 &&
+      this.bubbles.length < MAX_BUBBLES && this.microbes.length > 0 &&
+      now - this.lastBubble > spawnEvery
+    ) {
+      const m = this.microbes[Math.floor(Math.random() * this.microbes.length)];
+      this.bubbles.push({
+        x: m.x + (Math.random() - 0.5) * m.r, y: m.y - m.r * 0.8,
+        r: 2.5 + Math.random() * 3.5, vy: 22 + Math.random() * 20,
+        wob: Math.random() * Math.PI * 2, wobA: 0.4 + Math.random() * 0.6,
+        label: Math.random() < 0.35,
+      });
+      this.lastBubble = now;
+    }
+    const foamTarget = summary.Pfinal > 0 ? 24 * clampT(st.P / summary.Pfinal, 0, 1) : 0;
+    this.foam += (foamTarget - this.foam) * 0.03;
+
+    // ---- particles
+    this.bubbles = this.bubbles.filter((b) => {
+      b.y -= b.vy / 60; b.wob += 0.08; b.x += Math.sin(b.wob) * 0.3;
+      return b.y > V.surface + 4;
+    });
+    this.crumbs = this.crumbs.filter((c) => {
+      c.x += c.vx / 60; c.y += c.vy / 60; c.vy += 140 / 60; c.life -= 1 / 24;
+      return c.life > 0;
+    });
+    this.puffs = this.puffs.filter((pf) => { pf.r += 0.6; pf.life -= 1 / 18; return pf.life > 0; });
+  }
+
+  spawnSugar(bx0, bx1, by0, by1, now) {
+    return {
+      x: bx0 + Math.random() * (bx1 - bx0), y: by0 + Math.random() * (by1 - by0),
+      vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8,
+      rot: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 0.8,
+      size: 6 + Math.random() * 3.5, birth: now, state: "free", holder: -1, eatT: 0,
+    };
+  }
+
+  spawnMicrobe(bx0, bx1, by0, by1) {
+    return {
+      x: bx0 + Math.random() * (bx1 - bx0), y: by0 + Math.random() * (by1 - by0),
+      vx: (Math.random() - 0.5) * 30, vy: (Math.random() - 0.5) * 30,
+      heading: Math.random() * Math.PI * 2, r: 11 + Math.random() * 4,
+      wob: Math.random() * Math.PI * 2, wanderT: Math.random(), wanderA: Math.random() * Math.PI * 2,
+      divideT: -1, blink: Math.random() * 4000 + 2000, gulpT: 0, sleepy: false,
+    };
+  }
+
+  roundRect(x, y, w, h, r) {
+    const ctx = this.ctx;
+    const rr = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + rr, y);
+    ctx.arcTo(x + w, y, x + w, y + h, rr);
+    ctx.arcTo(x + w, y + h, x, y + h, rr);
+    ctx.arcTo(x, y + h, x, y, rr);
+    ctx.arcTo(x, y, x + w, y, rr);
+    ctx.closePath();
+  }
+
+  easeOutBack(t) {
+    const c1 = 1.70158, c3 = c1 + 1;
+    return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+  }
+
+  draw(now, sh) {
+    const ctx = this.ctx, W = this.W, H = this.H;
+    if (W === 0 || H === 0) return;
+    const V = this.vessel();
+    const st = sampleAt(sh.summary, sh.tCur);
+    const phase = phaseAt(st.S, sh.params.S0, st.mu, sh.params.muMax);
+    const scene = PHASE_SCENE[phase];
+
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, "#1c1917"); bg.addColorStop(1, "#292524");
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+
+    for (const sx of [W * 0.3, W * 0.7]) {
+      const g = ctx.createRadialGradient(sx, -40, 10, sx, H * 0.5, H * 0.9);
+      g.addColorStop(0, "rgba(250, 204, 21, 0.07)"); g.addColorStop(1, "rgba(250, 204, 21, 0)");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    }
+
+    ctx.fillStyle = "#0c0a09";
+    ctx.fillRect(0, 0, W, V.sprocket);
+    ctx.fillRect(0, H - V.sprocket, W, V.sprocket);
+    ctx.fillStyle = "rgba(250, 250, 249, 0.85)";
+    const holeW = 14, gap = 26;
+    for (let x = gap / 2; x < W; x += gap) {
+      this.roundRect(x, 6, holeW, V.sprocket - 12, 3); ctx.fill();
+      this.roundRect(x, H - V.sprocket + 6, holeW, V.sprocket - 12, 3); ctx.fill();
+    }
+
+    ctx.save();
+    this.roundRect(V.x0, V.y0, V.x1 - V.x0, V.y1 - V.y0, 18);
+    ctx.fillStyle = "rgba(214, 211, 209, 0.08)"; ctx.fill();
+    ctx.strokeStyle = "rgba(231, 229, 228, 0.55)"; ctx.lineWidth = 2; ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    this.roundRect(V.x0 + 4, V.surface, V.x1 - V.x0 - 8, V.y1 - V.surface - 4, 12);
+    ctx.clip();
+
+    const sFrac = clampT(st.S / Math.max(sh.params.S0, 1e-9), 0, 1);
+    const pFrac = sh.summary.Pfinal > 0 ? clampT(st.P / sh.summary.Pfinal, 0, 1) : 0;
+    const liq = ctx.createLinearGradient(0, V.surface, 0, V.y1);
+    const amberA = lerpT(0.10, 0.34, sFrac);
+    liq.addColorStop(0, "rgba(251, 191, 36, " + amberA + ")");
+    liq.addColorStop(1, "rgba(180, 130, 30, " + amberA * 0.8 + ")");
+    ctx.fillStyle = liq;
+    ctx.fillRect(V.x0, V.surface, V.x1 - V.x0, V.y1 - V.surface);
+    if (pFrac > 0.01) {
+      ctx.fillStyle = "rgba(168, 85, 247, " + 0.16 * pFrac + ")";
+      ctx.fillRect(V.x0, V.surface, V.x1 - V.x0, V.y1 - V.surface);
+    }
+
+    ctx.strokeStyle = "rgba(254, 243, 199, 0.5)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let x = V.x0; x <= V.x1; x += 8) {
+      const y = V.surface + Math.sin(now / 700 + x / 40) * 1.6;
+      if (x === V.x0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    this.drawSugars(now);
+    this.drawPuffs();
+    this.drawMicrobes(now);
+    this.drawBubbles();
+    this.drawCrumbs();
+
+    if (this.foam > 1.5) {
+      ctx.save();
+      for (let i = 0; i < 14; i++) {
+        const fx = V.x0 + 10 + ((V.x1 - V.x0 - 20) * i) / 13;
+        const fr = 4 + 3 * Math.sin(i * 2.4 + now / 500);
+        const fy = V.surface + 3 + (i % 2) * (this.foam * 0.35);
+        const g = ctx.createRadialGradient(fx - 1, fy - 1, 0.5, fx, fy, Math.abs(fr) + this.foam * 0.25);
+        g.addColorStop(0, "rgba(216, 180, 254, 0.9)"); g.addColorStop(1, "rgba(147, 51, 234, 0.55)");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(fx, fy, Math.abs(fr) * 0.8 + this.foam * 0.22, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+    ctx.restore();
+
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.18)";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(V.x0 + 14, V.y0 + 26);
+    ctx.lineTo(V.x0 + 14, V.y1 - 20);
+    ctx.stroke();
+
+    this.drawSlate(now, scene.n, scene.name);
+    this.drawTimer(sh);
+    this.drawLegend();
+
+    if (sh.tCur >= sh.params.tf - 1e-6) {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = "rgba(250, 250, 249, 0.95)";
+      ctx.textAlign = "center";
+      ctx.font = "700 " + Math.round(W / 26) + "px ui-sans-serif, system-ui, sans-serif";
+      ctx.fillText("THAT IS ALL, FOLKS!", W / 2, H / 2 - 10);
+      ctx.font = "500 " + Math.round(W / 44) + "px ui-sans-serif, system-ui, sans-serif";
+      ctx.fillText(
+        "S \u2248 0   \u00b7   X \u2192 " + sh.summary.Xfinal.toFixed(2) + " g/L   \u00b7   P \u2192 " + sh.summary.Pfinal.toFixed(2) + " g/L",
+        W / 2, H / 2 + 24
+      );
+      ctx.textAlign = "left";
+    }
+  }
+
+  drawSugars(now) {
+    const ctx = this.ctx;
+    for (const s of this.sugars) {
+      let scale = 1;
+      const age = now - s.birth;
+      if (age < 260) scale = this.easeOutBack(age / 260);
+      if (s.state === "eaten") scale = Math.max(0, 1 - (now - s.eatT) / EAT_MS);
+      if (scale <= 0.02) continue;
+      ctx.save();
+      ctx.translate(s.x, s.y);
+      ctx.rotate(s.rot + (s.state === "held" ? Math.sin(now / 40) * 0.1 : 0));
+      ctx.scale(scale, scale);
+      const g = ctx.createLinearGradient(-s.size, -s.size, s.size, s.size);
+      g.addColorStop(0, "#fcd34d"); g.addColorStop(1, "#d97706");
+      ctx.fillStyle = g; ctx.strokeStyle = "#92400e"; ctx.lineWidth = 1.2;
+      this.roundRect(-s.size / 2, -s.size / 2, s.size, s.size, s.size * 0.3);
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
+      ctx.beginPath();
+      ctx.arc(-s.size * 0.18, -s.size * 0.18, s.size * 0.14, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  drawMicrobes(now) {
+    const ctx = this.ctx;
+    for (const m of this.microbes) {
+      const dividing = m.divideT >= 0;
+      const divP = dividing ? clampT((now - m.divideT) / DIVIDE_MS, 0, 1) : 0;
+      const wob = Math.sin(now / 140 + m.wob) * 0.08;
+
+      ctx.save();
+      ctx.translate(m.x, m.y);
+      ctx.rotate(m.heading);
+
+      ctx.strokeStyle = "rgba(77, 124, 15, 0.9)";
+      ctx.lineWidth = 1.6;
+      for (const off of [-0.45, 0, 0.45]) {
+        ctx.beginPath();
+        ctx.moveTo(-m.r * 0.95, off * m.r);
+        for (let i = 1; i <= 4; i++) {
+          const px = -m.r * 0.95 - i * m.r * 0.42;
+          const py = off * m.r + Math.sin(now / 90 + i + m.wob * 3) * 3 * (i / 4) + off * i * 1.2;
+          ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+      }
+
+      const r = m.r;
+      const bodyGrad = ctx.createRadialGradient(-r * 0.3, -r * 0.3, r * 0.2, 0, 0, r * 1.25);
+      bodyGrad.addColorStop(0, "#bef264"); bodyGrad.addColorStop(0.7, "#84cc16"); bodyGrad.addColorStop(1, "#4d7c0f");
+      ctx.fillStyle = bodyGrad; ctx.strokeStyle = "#365314"; ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      if (dividing && divP > 0.25) {
+        const sep = (r * 0.62 * (divP - 0.25)) / 0.75;
+        ctx.arc(-sep, 0, r * 0.82, Math.PI * 0.42, Math.PI * 1.58);
+        ctx.arc(sep, 0, r * 0.82, Math.PI * 1.42, Math.PI * 0.58);
+        ctx.closePath();
+      } else {
+        ctx.ellipse(0, 0, r * (1.12 + wob), r * (0.9 - wob * 0.5), 0, 0, Math.PI * 2);
+      }
+      ctx.fill(); ctx.stroke();
+
+      ctx.fillStyle = "rgba(54, 83, 20, 0.35)";
+      ctx.beginPath();
+      ctx.arc(-r * 0.35, -r * 0.2, r * 0.14, 0, Math.PI * 2);
+      ctx.arc(-r * 0.15, r * 0.3, r * 0.1, 0, Math.PI * 2);
+      ctx.fill();
+
+      const blinkOn = (now + m.blink) % 3400 < 130;
+      for (const ey of [-r * 0.3, r * 0.3]) {
+        const ex = r * 0.42;
+        if (m.sleepy || blinkOn) {
+          ctx.strokeStyle = "#1a2e05"; ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.arc(ex, ey, r * 0.16, Math.PI * 0.15, Math.PI * 0.85);
+          ctx.stroke();
+        } else {
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath(); ctx.arc(ex, ey, r * 0.24, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = "#1a2e05";
+          ctx.beginPath(); ctx.arc(ex + r * 0.09, ey, r * 0.11, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+
+      const gulping = now - m.gulpT < 320;
+      ctx.strokeStyle = "#1a2e05"; ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      if (gulping) {
+        ctx.fillStyle = "#365314";
+        ctx.arc(r * 0.62, 0, r * 0.18, 0, Math.PI * 2);
+        ctx.fill(); ctx.stroke();
+      } else if (m.sleepy) {
+        ctx.moveTo(r * 0.45, r * 0.05);
+        ctx.lineTo(r * 0.75, r * 0.05);
+        ctx.stroke();
+      } else {
+        ctx.arc(r * 0.55, r * 0.02, r * 0.2, -Math.PI * 0.25, Math.PI * 0.25);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      if (m.sleepy && Math.sin(now / 400 + m.wob * 7) > 0.3) {
+        ctx.save();
+        ctx.fillStyle = "rgba(250, 250, 249, " + (0.5 + 0.3 * Math.sin(now / 250)) + ")";
+        ctx.font = "700 " + Math.round(m.r * 0.9) + "px ui-sans-serif, system-ui, sans-serif";
+        ctx.fillText("z", m.x + m.r * 0.9, m.y - m.r * (1.1 + 0.25 * Math.sin(now / 300)));
+        ctx.restore();
+      }
+    }
+  }
+
+  drawBubbles() {
+    const ctx = this.ctx;
+    for (const b of this.bubbles) {
+      const g = ctx.createRadialGradient(b.x - b.r * 0.3, b.y - b.r * 0.3, 0.5, b.x, b.y, b.r);
+      g.addColorStop(0, "rgba(233, 213, 255, 0.95)"); g.addColorStop(1, "rgba(147, 51, 234, 0.65)");
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
+      if (b.label) {
+        ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+        ctx.font = "700 " + Math.round(b.r * 1.7) + "px ui-sans-serif, system-ui, sans-serif";
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText("P", b.x, b.y + 0.5);
+        ctx.textBaseline = "alphabetic"; ctx.textAlign = "left";
+      }
+    }
+  }
+
+  drawCrumbs() {
+    const ctx = this.ctx;
+    for (const c of this.crumbs) {
+      ctx.fillStyle = "rgba(217, 119, 6, " + c.life + ")";
+      ctx.beginPath(); ctx.arc(c.x, c.y, 1.8, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  drawPuffs() {
+    const ctx = this.ctx;
+    for (const pf of this.puffs) {
+      ctx.strokeStyle = "rgba(214, 211, 209, " + pf.life * 0.8 + ")";
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(pf.x, pf.y, pf.r * (2 - pf.life), 0, Math.PI * 2); ctx.stroke();
+    }
+  }
+
+  drawSlate(now, sceneN, sceneName) {
+    const ctx = this.ctx, pad = 10, h = 26;
+    ctx.save();
+    ctx.font = "700 11px ui-monospace, SFMono-Regular, monospace";
+    const label = this.W < 560 ? "REC  SCENE " + sceneN : "REC  SCENE " + sceneN + " \u00b7 " + sceneName;
+    const bw = Math.min(ctx.measureText(label).width + 38, Math.max(this.W - 160, 120));
+    ctx.fillStyle = "rgba(12, 10, 9, 0.72)";
+    this.roundRect(pad, pad + 20, bw, h, 6);
+    ctx.fill();
+    const on = Math.sin(now / 350) > -0.2;
+    ctx.fillStyle = on ? "#ef4444" : "#7f1d1d";
+    ctx.beginPath(); ctx.arc(pad + 14, pad + 20 + h / 2, 4.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "rgba(250, 250, 249, 0.92)";
+    ctx.fillText(label, pad + 24, pad + 20 + h / 2 + 4);
+    ctx.restore();
+  }
+
+  drawTimer(sh) {
+    const ctx = this.ctx;
+    const txt = "t = " + sh.tCur.toFixed(1) + " / " + sh.params.tf.toFixed(0) + " h";
+    ctx.save();
+    ctx.font = "700 13px ui-monospace, SFMono-Regular, monospace";
+    const w = ctx.measureText(txt).width + 20;
+    const x = this.W - w - 12;
+    ctx.fillStyle = "rgba(12, 10, 9, 0.72)";
+    this.roundRect(x, 30, w, 26, 6);
+    ctx.fill();
+    ctx.fillStyle = "#fde68a";
+    ctx.fillText(txt, x + 10, 47);
+    ctx.restore();
+  }
+
+  drawLegend() {
+    const ctx = this.ctx;
+    const items = [["#f59e0b", "sugar S"], ["#84cc16", "bugs X"], ["#a855f7", "product P"]];
+    ctx.save();
+    ctx.font = "600 11px ui-sans-serif, system-ui, sans-serif";
+    let x = 14;
+    const y = this.H - 30;
+    for (const [color, label] of items) {
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.arc(x + 5, y - 4, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "rgba(250, 250, 249, 0.85)";
+      ctx.fillText(label, x + 14, y);
+      x += 14 + ctx.measureText(label).width + 14;
+    }
+    ctx.restore();
+  }
+}
+</script>
+<script>
+/* ================= ChartsEngine — solution charts with locked axes ================= */
+"use strict";
+
+const COL_S = "#f59e0b", COL_X = "#65a30d", COL_P = "#a855f7";
+const COL_AXIS = "#57534e", COL_GRID = "#e7e5e4";
+
+function clampC(v, a, b) { return Math.min(Math.max(v, a), b); }
+
+class ChartsEngine {
+  constructor(canvas, getShared) {
+    this.canvas = canvas;
+    this.getShared = getShared;
+    this.ctx = canvas.getContext("2d");
+    this.raf = 0;
+    this.destroyed = false;
+    this.dragging = false;
+    this.W = 0; this.H = 0;
+
+    const tAt = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const sh = this.getShared();
+      const m = this.margins();
+      const plotW = rect.width - m.left - m.right;
+      const frac = clampC((e.clientX - rect.left - m.left) / plotW, 0, 1);
+      return frac * sh.params.tf;
+    };
+    const down = (e) => {
+      const t = tAt(e);
+      this.dragging = true;
+      const sh = this.getShared();
+      sh.scrubbing = true;
+      sh.tCur = t;
+      try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+    };
+    const move = (e) => {
+      if (!this.dragging) return;
+      const t = tAt(e);
+      if (t !== null) this.getShared().tCur = t;
+    };
+    const up = (e) => {
+      if (!this.dragging) return;
+      this.dragging = false;
+      this.getShared().scrubbing = false;
+      try { canvas.releasePointerCapture(e.pointerId); } catch (err) {}
+    };
+    canvas.addEventListener("pointerdown", down);
+    canvas.addEventListener("pointermove", move);
+    canvas.addEventListener("pointerup", up);
+    canvas.addEventListener("pointercancel", up);
+
+    this.loop = this.loop.bind(this);
+    this.raf = requestAnimationFrame(this.loop);
+  }
+
+  destroy() { this.destroyed = true; cancelAnimationFrame(this.raf); }
+
+  loop(now) {
+    if (this.destroyed) return;
+    this.frame(now);
+    this.raf = requestAnimationFrame(this.loop);
+  }
+
+  resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = this.canvas.clientWidth, h = this.canvas.clientHeight;
+    if (w === 0 || h === 0) return;
+    if (this.canvas.width !== Math.round(w * dpr) || this.canvas.height !== Math.round(h * dpr)) {
+      this.canvas.width = Math.round(w * dpr);
+      this.canvas.height = Math.round(h * dpr);
+    }
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.W = w; this.H = h;
+  }
+
+  margins() { return { left: 46, right: 16, top: 30, bottom: 34, mid: 26 }; }
+
+  fmt(v) {
+    if (v === 0) return "0";
+    if (v >= 100) return v.toFixed(0);
+    if (v >= 10) return v.toFixed(v % 1 === 0 ? 0 : 1);
+    return Number.isInteger(v) ? v.toFixed(0) : v.toFixed(2).replace(/0$/, "");
+  }
+
+  frame() {
+    const sh = this.getShared();
+    this.resize();
+    if (this.W === 0 || this.H === 0) return;
+    this.drawPanelA(sh);
+    this.drawPanelB(sh);
+  }
+
+  strokeTraj(arr, t, xOf, yOf) {
+    const ctx = this.ctx;
+    ctx.beginPath();
+    for (let i = 0; i < arr.length; i++) {
+      const x = xOf(t[i]), y = yOf(arr[i]);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+
+  drawPanelA(sh) {
+    const ctx = this.ctx, W = this.W, m = this.margins();
+    const panelH = (this.H - m.mid) * 0.62;
+    const x0 = m.left, y0 = m.top;
+    const pw = W - m.left - m.right;
+    const ph = panelH - m.top - m.bottom;
+    if (ph < 40) return;
+
+    const params = sh.params, summary = sh.summary, traj = summary.traj;
+    const xOf = (t) => x0 + (t / params.tf) * pw;
+    const yOf = (v) => y0 + ph - (v / summary.yMax) * ph;
+
+    ctx.clearRect(0, 0, this.W, this.H);
+
+    ctx.fillStyle = "#1c1917";
+    ctx.font = "700 13px ui-sans-serif, system-ui, sans-serif";
+    ctx.fillText("The solution: S, X, P over time", m.left, 16);
+    ctx.fillStyle = "#a8a29e";
+    ctx.font = "500 10.5px ui-sans-serif, system-ui, sans-serif";
+    ctx.textAlign = "right";
+    ctx.fillText("\u2194 drag to scrub", W - m.right, 16);
+    ctx.textAlign = "left";
+
+    const yStep = niceStep(summary.yMax / 4);
+    ctx.strokeStyle = COL_GRID;
+    ctx.lineWidth = 1;
+    ctx.font = "500 10px ui-monospace, monospace";
+    for (let v = 0; v <= summary.yMax + 1e-9; v += yStep) {
+      const y = yOf(v);
+      ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x0 + pw, y); ctx.stroke();
+      ctx.fillStyle = "#78716c"; ctx.textAlign = "right";
+      ctx.fillText(this.fmt(v), x0 - 6, y + 3.5);
+      ctx.textAlign = "left";
+    }
+    const xStep = niceStep(params.tf / 6);
+    for (let v = 0; v <= params.tf + 1e-9; v += xStep) {
+      const x = xOf(v);
+      ctx.strokeStyle = COL_GRID;
+      ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y0 + ph); ctx.stroke();
+      ctx.fillStyle = "#78716c"; ctx.textAlign = "center";
+      ctx.fillText(this.fmt(v), x, y0 + ph + 14);
+      ctx.textAlign = "left";
+    }
+
+    ctx.strokeStyle = COL_AXIS;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(x0, y0, pw, ph);
+
+    ctx.fillStyle = "#44403c";
+    ctx.font = "600 11px ui-sans-serif, system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("time (h)", x0 + pw / 2, y0 + ph + 30);
+    ctx.textAlign = "right";
+    ctx.fillText("g/L", x0 - 8, y0 - 10);
+    ctx.textAlign = "left";
+
+    const curves = [[traj.S, COL_S], [traj.X, COL_X], [traj.P, COL_P]];
+    const cursorX = xOf(sh.tCur);
+
+    for (const [arr, color] of curves) {
+      ctx.strokeStyle = color;
+      ctx.globalAlpha = 0.18;
+      ctx.lineWidth = 1.4;
+      this.strokeTraj(arr, traj.t, xOf, yOf);
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x0 - 1, 0, cursorX - x0 + 1, this.H);
+    ctx.clip();
+    for (const [arr, color] of curves) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2.2;
+      this.strokeTraj(arr, traj.t, xOf, yOf);
+    }
+    ctx.restore();
+
+    const st = sampleAt(summary, sh.tCur);
+    ctx.strokeStyle = "#78716c";
+    ctx.lineWidth = 1.2;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ctx.moveTo(cursorX, y0); ctx.lineTo(cursorX, y0 + ph);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    const dots = [[st.S, COL_S], [st.X, COL_X], [st.P, COL_P]];
+    for (const [v, color] of dots) {
+      ctx.fillStyle = color;
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(cursorX, yOf(v), 4.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    }
+
+    const legend = [[COL_S, "S substrate"], [COL_X, "X biomass"], [COL_P, "P product"]];
+    let lx = x0 + 8;
+    const ly = y0 + 14;
+    ctx.font = "600 11px ui-sans-serif, system-ui, sans-serif";
+    for (const [color, label] of legend) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(lx, ly - 4); ctx.lineTo(lx + 16, ly - 4); ctx.stroke();
+      ctx.fillStyle = "#44403c";
+      ctx.fillText(label, lx + 20, ly);
+      lx += 30 + ctx.measureText(label).width;
+    }
+  }
+
+  drawPanelB(sh) {
+    const ctx = this.ctx, m = this.margins();
+    const panelH = this.H - m.mid;
+    const top = (this.H - m.mid) * 0.62 + m.mid;
+    const x0 = m.left, y0 = top + 24;
+    const pw = this.W - m.left - m.right;
+    const ph = panelH - top - 24 - m.bottom;
+    if (ph < 40) return;
+
+    const params = sh.params, summary = sh.summary;
+    const muMax = params.muMax, Ks = params.Ks;
+    const Smax = summary.Smax;
+    const xOf = (s) => x0 + (s / Smax) * pw;
+    const yOf = (mu) => y0 + ph - (mu / (muMax * 1.1)) * ph;
+    const muOf = (s) => (muMax * Math.max(s, 0)) / (Ks + Math.max(s, 0));
+
+    ctx.fillStyle = "#1c1917";
+    ctx.font = "700 12.5px ui-sans-serif, system-ui, sans-serif";
+    ctx.fillText("Monod\u2019s law \u03bc(S) \u2014 the speedometer of growth", m.left, top + 12);
+
+    const yStep = niceStep((muMax * 1.1) / 3);
+    ctx.font = "500 10px ui-monospace, monospace";
+    for (let v = 0; v <= muMax * 1.1 + 1e-9; v += yStep) {
+      const y = yOf(v);
+      ctx.strokeStyle = COL_GRID; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x0 + pw, y); ctx.stroke();
+      ctx.fillStyle = "#78716c"; ctx.textAlign = "right";
+      ctx.fillText(this.fmt(v), x0 - 6, y + 3.5);
+      ctx.textAlign = "left";
+    }
+    const xStep = niceStep(Smax / 5);
+    for (let v = 0; v <= Smax + 1e-9; v += xStep) {
+      const x = xOf(v);
+      ctx.strokeStyle = COL_GRID;
+      ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y0 + ph); ctx.stroke();
+      ctx.fillStyle = "#78716c"; ctx.textAlign = "center";
+      ctx.fillText(this.fmt(v), x, y0 + ph + 14);
+      ctx.textAlign = "left";
+    }
+
+    ctx.strokeStyle = COL_AXIS;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(x0, y0, pw, ph);
+    ctx.fillStyle = "#44403c";
+    ctx.font = "600 11px ui-sans-serif, system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("S (g/L)", x0 + pw / 2, y0 + ph + 30);
+    ctx.textAlign = "right";
+    ctx.fillText("\u03bc (1/h)", x0 - 8, y0 - 8);
+    ctx.textAlign = "left";
+
+    ctx.strokeStyle = "#a8a29e";
+    ctx.setLineDash([5, 4]);
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(xOf(Ks), y0);
+    ctx.lineTo(xOf(Ks), yOf(muMax / 2));
+    ctx.lineTo(x0, yOf(muMax / 2));
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = "#57534e";
+    ctx.font = "600 10.5px ui-sans-serif, system-ui, sans-serif";
+    ctx.fillText("Ks", xOf(Ks) + 4, y0 + 12);
+    ctx.textAlign = "right";
+    ctx.fillText("\u03bcmax/2", x0 + pw - 4, yOf(muMax / 2) - 5);
+    ctx.textAlign = "left";
+
+    ctx.strokeStyle = "#1c1917";
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    const steps = 160;
+    for (let i = 0; i <= steps; i++) {
+      const s = (Smax * i) / steps;
+      const x = xOf(s), y = yOf(muOf(s));
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    const st = sampleAt(summary, sh.tCur);
+    const traj = summary.traj;
+    ctx.strokeStyle = "rgba(245, 158, 11, 0.55)";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([2, 3]);
+    ctx.beginPath();
+    const tN = 60;
+    for (let i = 0; i <= tN; i++) {
+      const idx = Math.floor((sh.tCur / params.tf) * (traj.n - 1) * (i / tN));
+      const x = xOf(traj.S[idx]), y = yOf(traj.mu[idx]);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = "#f59e0b";
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(xOf(st.S), yOf(st.mu), 5.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  }
+}
+</script>
+<script>
+/* ================= App wiring: sliders, transport, master loop ================= */
+"use strict";
+
+(function () {
+  const BASE_RUN_SEC = 24;
+
+  const shared = {
+    tCur: 0, playing: true, speed: 1, scrubbing: false,
+    params: Object.assign({}, DEFAULT_PARAMS),
+    summary: solveMonod(DEFAULT_PARAMS),
+    resetToken: 0,
+  };
+
+  const SLIDERS = [
+    { key: "S0", label: "Initial substrate", symbol: "S\u2080", unit: "g/L", min: 1, max: 50, step: 0.5, group: 1, hint: "how much sugar we pour in at t = 0", decimals: 1 },
+    { key: "X0", label: "Initial biomass", symbol: "X\u2080", unit: "g/L", min: 0.01, max: 1.5, step: 0.01, group: 1, hint: "the starter culture: a pinch of hungry bugs", decimals: 2 },
+    { key: "tf", label: "Final time (movie length)", symbol: "t_f", unit: "h", min: 6, max: 120, step: 1, group: 1, hint: "the t-axis always runs 0 \u2192 tf, origin included", decimals: 0 },
+    { key: "muMax", label: "Max specific growth rate", symbol: "\u03bc_max", unit: "1/h", min: 0.05, max: 1.2, step: 0.05, group: 2, hint: "top division speed when S \u226b Ks", decimals: 2 },
+    { key: "Ks", label: "Half-saturation constant", symbol: "K_s", unit: "g/L", min: 0.05, max: 8, step: 0.05, group: 2, hint: "the S level where \u03bc = \u03bcmax/2", decimals: 2 },
+    { key: "Yxs", label: "Yield biomass on substrate", symbol: "Y_XS", unit: "gX/gS", min: 0.1, max: 0.9, step: 0.05, group: 2, hint: "grams of bugs per gram of sugar eaten \u2014 the leftover (1 \u2212 Y_XS) becomes product", decimals: 2 },
+  ];
+
+  const PHASE_LABEL = {
+    feast: "Scene 1 \u00b7 Feast",
+    slowdown: "Scene 2 \u00b7 Slowdown",
+    famine: "Scene 3 \u00b7 Famine",
+    stationary: "Scene 4 \u00b7 Finale",
+  };
+
+  function captionFor(phase, p, started) {
+    if (!started) {
+      return "Scene 1 is about to roll: a fresh batch reactor with " + p.S0 + " g/L of sugar and " +
+        p.X0 + " g/L of hungry microbes. Press play!";
+    }
+    switch (phase) {
+      case "feast":
+        return "Scene 1 \u00b7 The Feast \u2014 S is plentiful (S \u226b Ks), so \u03bc \u2248 \u03bcmax = " + p.muMax +
+          " 1/h. Every cell divides at top speed: X climbs exponentially while sugar is chewed at rate \u03bc\u00b7X/Y_XS, its (1 \u2212 Y_XS) share becoming product.";
+      case "slowdown":
+        return "Scene 2 \u00b7 The Slowdown \u2014 S has fallen toward Ks = " + p.Ks +
+          " g/L. Monod bites: \u03bc = \u03bcmax\u00b7S/(Ks+S) drops, and the X curve bends away from exponential. Watch the dot slide down the Monod hill.";
+      case "famine":
+        return "Scene 3 \u00b7 The Famine \u2014 almost no sugar left, \u03bc has collapsed toward 0. Division stops and the microbes get sleepy (watch the zzz).";
+      case "stationary":
+        return "Scene 4 \u00b7 The Finale \u2014 S \u2248 0, so \u03bc = 0. X plateaus at X\u2080 + Y_XS\u00b7S\u2080 \u2248 " +
+          (p.X0 + p.Yxs * p.S0).toFixed(1) + " g/L, and P stops at (1 \u2212 Y_XS)\u00b7S\u2080 \u2248 " +
+          ((1 - p.Yxs) * p.S0).toFixed(1) + " g/L \u2014 every leftover gram of sugar became product. Roll credits!";
+    }
+  }
+
+  const el = (id) => document.getElementById(id);
+  const roT = el("ro-t"), roS = el("ro-S"), roX = el("ro-X"), roP = el("ro-P"),
+    roMu = el("ro-mu"), roMuFrac = el("ro-mufrac");
+  const captionEl = el("caption"), phaseBadge = el("phase-badge");
+  const resultsEl = el("results");
+  const btnPlay = el("btn-play"), btnRestart = el("btn-restart"), btnReset = el("btn-reset");
+  const speedInput = el("sl-speed"), speedVal = el("val-speed");
+
+  // ---- build slider rows
+  const sliderInputs = {};
+  function buildSlider(def) {
+    const row = document.createElement("div");
+    row.className = "slider-row";
+    row.innerHTML =
+      '<div class="slider-head">' +
+      '<label for="sl-' + def.key + '"><span class="sym">' + def.symbol + '</span> \u00b7 ' + def.label +
+      ' <span class="unit">(' + def.unit + ')</span></label>' +
+      '<span class="val-badge" id="val-' + def.key + '">' + shared.params[def.key].toFixed(def.decimals) + '</span>' +
+      '</div>' +
+      '<input type="range" id="sl-' + def.key + '" min="' + def.min + '" max="' + def.max +
+      '" step="' + def.step + '" value="' + shared.params[def.key] + '" aria-label="' + def.label + ' slider">' +
+      '<p class="hint">' + def.hint + '</p>';
+    (def.group === 1 ? el("sliders-batch") : el("sliders-kinetics")).appendChild(row);
+    const input = row.querySelector("input");
+    sliderInputs[def.key] = { input, def };
+    input.addEventListener("input", () => {
+      shared.params[def.key] = parseFloat(input.value);
+      onParamsChanged();
+    });
+  }
+  SLIDERS.forEach(buildSlider);
+
+  function updateBadges() {
+    for (const key in sliderInputs) {
+      const { input, def } = sliderInputs[key];
+      input.value = shared.params[key];
+      el("val-" + key).textContent = shared.params[key].toFixed(def.decimals);
+    }
+  }
+
+  function updateResults() {
+    const s = shared.summary;
+    const li = [];
+    li.push("\u2022 X settles at <b class=\"mono\">" + s.Xfinal.toFixed(3) +
+      " g/L</b> = X\u2080 + Y_XS\u00b7S\u2080 (mass balance)");
+    li.push("\u2022 P ends at <b class=\"mono\">" + s.Pfinal.toFixed(3) +
+      " g/L</b> = (1 \u2212 Y_XS)\u00b7S\u2080 \u2014 the leftover sugar mass, since S+X+P is conserved");
+    li.push("\u2022 Derived yield Y_PX = (1 \u2212 Y_XS)/Y_XS = <b class=\"mono\">" + s.YpxEff.toFixed(3) +
+      " gP/gX</b> (no slider \u2014 forced by the closed balance)");
+    li.push("\u2022 Sugar runs out at about <b class=\"mono\">" +
+      (s.tSugarOut !== null ? s.tSugarOut.toFixed(1) + " h" : "after t_f") + "</b>");
+    li.push("\u2022 \u2696\ufe0f closed mass balance S+X+P = const: RK4 drift <b class=\"mono\">" +
+      (s.maxMassDrift * 100).toFixed(4) + "%</b>");
+    li.push(s.maxRelErrImplicit !== null
+      ? "\u2022 \u2705 RK4 movie vs closed-form solution: max gap <b class=\"mono\">" +
+        (s.maxRelErrImplicit * 100).toFixed(2) + "%</b>"
+      : "\u2022 \u23f3 closed-form check needs some growth first");
+    resultsEl.innerHTML = li.map((x) => "<li>" + x + "</li>").join("");
+  }
+
+  function onParamsChanged() {
+    shared.summary = solveMonod(shared.params);
+    if (shared.tCur > shared.params.tf) shared.tCur = shared.params.tf;
+    updateBadges();
+    updateResults();
+  }
+
+  function syncPlayButton() {
+    btnPlay.textContent = shared.playing ? "\u23f8 Pause" : "\u25b6 Play";
+    btnPlay.setAttribute("aria-label", shared.playing ? "Pause" : "Play");
+  }
+
+  btnPlay.addEventListener("click", () => {
+    if (!shared.playing && shared.tCur >= shared.params.tf - 1e-9) shared.tCur = 0;
+    shared.playing = !shared.playing;
+    syncPlayButton();
+  });
+  btnRestart.addEventListener("click", () => {
+    shared.tCur = 0;
+    shared.resetToken += 1;
+    shared.playing = true;
+    syncPlayButton();
+  });
+  btnReset.addEventListener("click", () => {
+    shared.params = Object.assign({}, DEFAULT_PARAMS);
+    shared.speed = 1;
+    speedInput.value = 1;
+    speedVal.textContent = "1.00\u00d7";
+    onParamsChanged();
+  });
+  speedInput.addEventListener("input", () => {
+    shared.speed = parseFloat(speedInput.value);
+    speedVal.textContent = shared.speed.toFixed(2) + "\u00d7";
+  });
+
+  // ---- engines + master loop
+  const theater = new TheaterEngine(el("theater"), () => shared);
+  const charts = new ChartsEngine(el("charts"), () => shared);
+
+  let lastPhase = "";
+  function pushReadout() {
+    const st = sampleAt(shared.summary, shared.tCur);
+    roT.textContent = shared.tCur.toFixed(1) + " h";
+    roS.textContent = st.S.toFixed(2) + " g/L";
+    roX.textContent = st.X.toFixed(3) + " g/L";
+    roP.textContent = st.P.toFixed(2) + " g/L";
+    roMu.textContent = st.mu.toFixed(3) + " 1/h";
+    const muFrac = shared.params.muMax > 0 ? st.mu / shared.params.muMax : 0;
+    roMuFrac.textContent = (muFrac * 100).toFixed(0) + " %";
+    const phase = phaseAt(st.S, shared.params.S0, st.mu, shared.params.muMax);
+    if (phase !== lastPhase) {
+      lastPhase = phase;
+      phaseBadge.textContent = PHASE_LABEL[phase];
+      phaseBadge.className = "phase-badge pb-" + phase;
+    }
+    captionEl.textContent = captionFor(phase, shared.params, shared.tCur > 1e-6);
+  }
+
+  updateResults();
+  pushReadout();
+
+  let last = performance.now();
+  let lastRo = 0;
+  function loop(now) {
+    const dtReal = Math.min((now - last) / 1000, 0.1);
+    last = now;
+    if (shared.playing && !shared.scrubbing) {
+      shared.tCur += dtReal * shared.speed * (shared.params.tf / BASE_RUN_SEC);
+      if (shared.tCur >= shared.params.tf) {
+        shared.tCur = shared.params.tf;
+        shared.playing = false;
+        syncPlayButton();
+      }
+    }
+    theater.frame(now);
+    charts.frame(now);
+    if (now - lastRo > 140) { lastRo = now; pushReadout(); }
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
